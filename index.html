@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rørstrøm og pumper</title>
+<meta name="description" content="Simulering av væskestrøm i meierirør: laminær og turbulent strømning, Reynolds-tall, løftehøyde og pumper. Vg2 kjemiprosess- og laboratoriefag.">
+<meta name="theme-color" content="#1F6FB2">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Rørstrøm">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-size:14px;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<style>
+/* Layout: prosessanlegg-panel – kontroller til venstre, levende rør/kurve til høyre, Ark2-tabell nederst */
+:root{
+  --bg:#EEF2F5; --panel:#FFFFFF; --ink:#15202B; --muted:#55657A; --line:#CBD5DF; --soft:#E3E9EF;
+  --accent:#1F6FB2; --sys:#C0641A; --steel1:#9AA8B6; --steel2:#DCE3EA;
+  --ok:#2F7D50; --warn:#9A6A12; --bad:#B42B2B; --okbg:#E2F2E8; --warnbg:#FBF0D9; --badbg:#FBE3E3; --infobg:#E2EDF8;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F161D; --panel:#17212B; --ink:#E4EBF2; --muted:#93A3B5; --line:#2B3947; --soft:#1E2A36;
+  --accent:#4A90D0; --sys:#D07A38; --steel1:#4A5866; --steel2:#2A3644;
+  --ok:#6CC895; --warn:#E2B657; --bad:#F08080; --okbg:#173326; --warnbg:#3A2E12; --badbg:#3D1C1C; --infobg:#16293C;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F161D; --panel:#17212B; --ink:#E4EBF2; --muted:#93A3B5; --line:#2B3947; --soft:#1E2A36;
+  --accent:#4A90D0; --sys:#D07A38; --steel1:#4A5866; --steel2:#2A3644;
+  --ok:#6CC895; --warn:#E2B657; --bad:#F08080; --okbg:#173326; --warnbg:#3A2E12; --badbg:#3D1C1C; --infobg:#16293C;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-direction:column;gap:6px}
+.tag{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,5vw,50px);line-height:1;margin:0;letter-spacing:.01em;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:28px;line-height:1.1;margin:0;text-wrap:balance}
+h3{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0}
+.lead{max-width:68ch;color:var(--muted);margin:0}
+section{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:22px;display:flex;flex-direction:column;gap:18px}
+.sechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;justify-content:space-between}
+.sechead p{margin:0;color:var(--muted);max-width:70ch}
+.grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.controls{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label,.lbl{font-size:13px;font-weight:500}
+.row{display:flex;gap:8px;align-items:center}
+.unit{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+select,input[type=number]{font:inherit;font-family:var(--mono);font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:7px 9px;width:100%;min-width:0}
+input[type=number]{max-width:130px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+select:focus-visible,input:focus-visible,button:focus-visible,tr:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{flex:1;font:inherit;font-size:13px;padding:7px 6px;border:0;background:var(--bg);color:var(--ink);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--accent);color:#fff}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.hint{font-size:12.5px;color:var(--muted);margin:0}
+.btn{font:inherit;font-size:14px;font-weight:500;padding:9px 12px;border-radius:4px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;text-align:left}
+.btn:hover{background:var(--infobg)}
+.stage{display:flex;flex-direction:column;gap:14px;min-width:0}
+.canvasbox{position:relative;background:var(--soft);border-radius:4px;overflow:hidden}
+canvas{display:block;width:100%;height:230px}
+.legendline{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:var(--muted)}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-1px;margin-right:6px}
+.read{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.read div{background:var(--panel);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.read span{font-size:12px;color:var(--muted)}
+.read b{font-family:var(--mono);font-weight:500;font-size:19px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.read b small{font-size:12px;color:var(--muted);font-weight:400;margin-left:4px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;width:fit-content}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.c-ok{background:var(--okbg);color:var(--ok)} .c-warn{background:var(--warnbg);color:var(--warn)} .c-bad{background:var(--badbg);color:var(--bad)} .c-info{background:var(--infobg);color:var(--accent)}
+.statusline{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font-size:14px}
+.formula{font-family:var(--mono);font-size:13px;background:var(--bg);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;overflow-x:auto}
+.formula div{white-space:nowrap}
+.formula em{font-style:normal;color:var(--muted)}
+.rebar{position:relative;height:34px}
+.rebar .track{position:absolute;left:0;right:0;top:8px;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--okbg) 0 36%,var(--warnbg) 36% 50%,var(--infobg) 50% 100%);border:1px solid var(--line)}
+.rebar .mk{position:absolute;top:0;width:2px;height:26px;background:var(--ink);transform:translateX(-1px);transition:left .25s}
+.rebar .tk{position:absolute;top:20px;font-family:var(--mono);font-size:11px;color:var(--muted);transform:translateX(-50%)}
+.cols2{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:760px){.cols2{grid-template-columns:minmax(0,1fr)}}
+.regime{border-top:3px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:4px}
+.regime p{margin:0;font-size:14px;color:var(--muted)}
+.regime strong{font-size:15px}
+.regime.on{border-top-color:var(--accent)}
+.regime.on strong{color:var(--accent)}
+.chartbox{position:relative;min-width:0}
+.chartbox svg{display:block;width:100%;height:auto}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 9px;font-family:var(--mono);font-size:12px;line-height:1.45;white-space:nowrap;box-shadow:0 4px 14px rgb(0 0 0 / .12)}
+.bars{display:flex;flex-direction:column;gap:7px}
+.bar{display:grid;grid-template-columns:150px minmax(0,1fr) 70px;gap:10px;align-items:center;font-size:13px}
+.bar .t{height:10px;background:var(--soft);border-radius:2px;overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--sys);border-radius:0 2px 2px 0;transition:width .25s}
+.bar b{font-family:var(--mono);font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
+@media (max-width:480px){.bar{grid-template-columns:110px minmax(0,1fr) 62px}}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+th{font-weight:600;font-size:12px;color:var(--muted);background:var(--bg);text-transform:uppercase;letter-spacing:.04em}
+td{font-family:var(--mono)}
+th:first-child,td:first-child,th:last-child,td:last-child{text-align:left}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--soft)}
+tbody tr.sel{background:var(--infobg)}
+tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.tasks{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:80ch}
+.note{font-size:12.5px;color:var(--muted);margin:0;max-width:90ch}
+.warnbox{font-size:13.5px;border-radius:4px;padding:8px 12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="tag">Vg2 kjemiprosess- og laboratoriefag · Meierirør i rustfritt stål</span>
+  <h1>Rørstrøm og pumper</h1>
+  <p class="lead">Simulering bygget på regnearket «Beregning av flow m.m. i meierirør». Velg rør, flow og væske, se om strømningen blir laminær eller turbulent, og finn driftspunktet til ulike pumper.</p>
+</header>
+
+<!-- ========== DEL 1 ========== -->
+<section id="ror" aria-labelledby="h-ror">
+  <div class="sechead">
+    <h2 id="h-ror">1 · Strømning i røret</h2>
+    <p>Samme formler som i regnearket: veggtykkelse fra rørdimensjon, innvendig diameter og væskehastighet.</p>
+  </div>
+  <div class="grid">
+    <div class="controls">
+      <div class="field">
+        <label for="dim">Rørdimensjon, ytre diameter D</label>
+        <select id="dim"></select>
+      </div>
+      <div class="field">
+        <span class="lbl">Hva vil du sette inn?</span>
+        <div class="seg" role="group" aria-label="Beregningsmåte">
+          <button type="button" id="mFlow" aria-pressed="true">Ønsket flow</button>
+          <button type="button" id="mVel" aria-pressed="false">Ønsket hastighet</button>
+        </div>
+      </div>
+      <div class="field" id="fFlow">
+        <label for="flow">Ønsket flow, Q</label>
+        <div class="row"><input type="number" id="flow" min="1" max="80000" step="10"><span class="unit">liter/time</span></div>
+        <input type="range" id="flowR" min="0" max="1000" aria-label="Flow, glidebryter">
+      </div>
+      <div class="field" id="fVel" hidden>
+        <label for="vel">Ønsket væskehastighet, v</label>
+        <div class="row"><input type="number" id="vel" min="0.01" max="12" step="0.05"><span class="unit">m/s</span></div>
+        <input type="range" id="velR" min="0" max="1000" aria-label="Hastighet, glidebryter">
+      </div>
+      <div class="field">
+        <label for="fluid">Væske</label>
+        <select id="fluid"></select>
+      </div>
+      <div class="row" id="custom" hidden>
+        <div class="field"><label for="rho">Tetthet ρ</label><div class="row"><input type="number" id="rho" value="1000" step="1"><span class="unit">kg/m³</span></div></div>
+        <div class="field"><label for="mu">Viskositet μ</label><div class="row"><input type="number" id="mu" value="1" step="0.1" min="0.1"><span class="unit">mPa·s</span></div></div>
+      </div>
+      <p class="hint" id="fluidhint"></p>
+    </div>
+
+    <div class="stage">
+      <div class="canvasbox"><canvas id="pipe" aria-label="Animasjon av strømning i rør"></canvas></div>
+      <div class="legendline">
+        <span><i class="sw" style="background:var(--accent)"></i>Fargestrek sprøytet inn midt i røret (Reynolds' forsøk)</span>
+        <span><i class="sw" style="background:var(--muted)"></i>Partikler i væsken</span>
+        <span><i class="sw" style="background:var(--sys)"></i>Hastighetsprofil</span>
+        <span>Animasjonsfarten er skalert</span>
+      </div>
+      <div class="read" id="read1"></div>
+      <div class="statusline" id="status1"></div>
+      <div class="field">
+        <span class="lbl">Reynolds-tallet på skalaen</span>
+        <div class="rebar" aria-hidden="true">
+          <div class="track"></div>
+          <div class="mk" id="remk"></div>
+          <span class="tk" style="left:0%;transform:none">0</span>
+          <span class="tk" style="left:36%">2 300</span>
+          <span class="tk" style="left:50%">4 000</span>
+          <span class="tk" style="left:100%;transform:translateX(-100%)">100 000 (log)</span>
+        </div>
+      </div>
+      <div class="formula" id="formula1"></div>
+    </div>
+  </div>
+
+  <div class="cols2">
+    <div class="regime" id="rg-lam"><strong>Laminær · Re &lt; 2 300</strong><p>Væsken glir i lag uten å blande seg. Fargestreken holder seg rett. Hastigheten er størst midt i røret (dobbelt så stor som middelhastigheten) og null ved veggen – en parabelformet profil.</p></div>
+    <div class="regime" id="rg-tr"><strong>Overgang · 2 300–4 000</strong><p>Strømningen er ustabil. Streken begynner å bølge og bryter opp i støt. Trykktapet er vanskelig å forutsi, så dette området bør unngås ved dimensjonering.</p></div>
+    <div class="regime" id="rg-turb"><strong>Turbulent · Re &gt; 4 000</strong><p>Virvler blander væsken på tvers av røret. Fargen spres raskt. Profilen er flat, nesten lik hastighet over hele tverrsnittet. Gir god varmeoverføring og effektiv CIP-rengjøring.</p></div>
+  </div>
+</section>
+
+<!-- ========== DEL 2 ========== -->
+<section id="pumpe" aria-labelledby="h-pumpe">
+  <div class="sechead">
+    <h2 id="h-pumpe">2 · Løftehøyde og pumper</h2>
+    <p>Røret og væsken fra del 1 brukes her. Driftspunktet er der pumpekurven og anleggskurven krysser hverandre.</p>
+  </div>
+  <div class="grid">
+    <div class="controls">
+      <div class="field">
+        <label for="pump">Pumpe</label>
+        <select id="pump"></select>
+      </div>
+      <div class="field">
+        <span class="lbl">Kobling</span>
+        <div class="seg" role="group" aria-label="Kobling av pumper">
+          <button type="button" data-k="1" aria-pressed="true">Én pumpe</button>
+          <button type="button" data-k="s" aria-pressed="false">To i serie</button>
+          <button type="button" data-k="p" aria-pressed="false">To i parallell</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="n">Turtall (frekvensomformer)</label>
+        <div class="row"><input type="range" id="n" min="40" max="120" step="1" value="100"><span class="unit" id="nv">100 %</span></div>
+      </div>
+      <h3>Anlegget</h3>
+      <div class="field"><label for="hs">Statisk løftehøyde (nivåforskjell)</label><div class="row"><input type="number" id="hs" value="6" step="0.5" min="-10" max="60"><span class="unit">m</span></div></div>
+      <div class="field"><label for="pb">Mottrykk / trykkfall i utstyr</label><div class="row"><input type="number" id="pb" value="0.5" step="0.1" min="0" max="10"><span class="unit">bar</span></div></div>
+      <div class="field"><label for="L">Rørlengde</label><div class="row"><input type="number" id="L" value="40" step="1" min="1" max="1000"><span class="unit">m</span></div></div>
+      <div class="field"><label for="nb">Antall 90° bend (K = 0,3)</label><div class="row"><input type="number" id="nb" value="8" step="1" min="0" max="80"><span class="unit">stk</span></div></div>
+      <div class="field"><label for="nvv">Antall seteventiler (K = 2,0)</label><div class="row"><input type="number" id="nvv" value="3" step="1" min="0" max="30"><span class="unit">stk</span></div></div>
+      <p class="hint">Innløp (K = 0,5) og utløp (K = 1,0) er alltid med.</p>
+    </div>
+
+    <div class="stage">
+      <div class="chartbox" id="chartbox">
+        <svg id="chart" role="img" aria-label="Pumpekurve og anleggskurve"></svg>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+      <div class="legendline">
+        <span><i class="sw" style="background:var(--accent)"></i>Pumpekurve H(Q)</span>
+        <span><i class="sw" style="background:var(--sys)"></i>Anleggskurve</span>
+        <span><i class="sw" style="background:var(--ink);border-radius:50%"></i>Driftspunkt</span>
+        <span>Stiplet linje: ønsket flow fra del 1</span>
+      </div>
+      <div class="read" id="read2"></div>
+      <div id="warn2"></div>
+      <div class="field">
+        <h3>Hva løftehøyden går med til, i driftspunktet</h3>
+        <div class="bars" id="bars"></div>
+      </div>
+      <button type="button" class="btn" id="useOp">Bruk driftspunktets flow i del 1</button>
+    </div>
+  </div>
+  <div class="formula" id="formula2"></div>
+</section>
+
+<!-- ========== DEL 3 ========== -->
+<section id="tabell" aria-labelledby="h-tab">
+  <div class="sechead">
+    <h2 id="h-tab">3 · Alle rørdimensjoner ved valgt flow</h2>
+    <p>Tilsvarer «Ark2» i regnearket. Klikk en rad for å velge røret.</p>
+  </div>
+  <div class="tablebox">
+    <table>
+      <thead><tr><th>Rør D</th><th>Vegg t</th><th>Indre d</th><th>Liter per m</th><th>Hastighet v</th><th>Re</th><th>Strømning</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <p class="note" id="tabnote"></p>
+</section>
+
+<section aria-labelledby="h-prov">
+  <h2 id="h-prov">Prøv selv</h2>
+  <ol class="tasks">
+    <li>Velg helmelk 4 °C i 38 mm rør. Hvor lav må flowen bli før strømningen blir laminær? Sammenlign med 72 °C.</li>
+    <li>CIP krever minst 1,5 m/s. Hvilken flow trenger du i 51 mm og 76,1 mm rør?</li>
+    <li>Bytt til glyserol eller fløte. Hvorfor blir strømningen laminær selv ved høy hastighet?</li>
+    <li>Sentrifugalpumpe B gir mer flow enn ønsket. Senk turtallet til driftspunktet treffer den stiplede linjen. Hva skjer med effekten?</li>
+    <li>Øk statisk løftehøyde til 30 m. Hva skjer med sentrifugalpumpen, og hva skjer med lobepumpen?</li>
+    <li>Sammenlign to pumper i serie og to i parallell. Når gir serie mest, og når gir parallell mest?</li>
+  </ol>
+  <p class="note">Modellen bruker Darcy–Weisbach med friksjonsfaktor 64/Re (laminær) og Swamee–Jain (turbulent), ruhet 0,0015 mm for rustfritt stål, og lineær overgang mellom Re 2 300 og 4 000. Væskedata og pumpekurver er typiske, forenklede verdier for undervisning, ikke data fra en bestemt leverandør.</p>
+</section>
+</div>
+
+<script>
+(function(){
+"use strict";
+const g=9.81, EPS=0.0015; // mm ruhet
+const DIMS=[6,8,10,12,16,25,32,38,51,63.5,76.1,101.6];
+const FLUIDS=[
+ {id:"v20",n:"Vann 20 °C",rho:998,mu:1.0},
+ {id:"v60",n:"Vann 60 °C",rho:983,mu:0.47},
+ {id:"cip",n:"Lut til CIP, 75 °C",rho:1010,mu:0.40},
+ {id:"m4",n:"Helmelk 4 °C",rho:1032,mu:2.8},
+ {id:"m20",n:"Helmelk 20 °C",rho:1030,mu:2.0},
+ {id:"m72",n:"Melk 72 °C (pasteurisering)",rho:1010,mu:0.7},
+ {id:"f5",n:"Fløte 35 %, 5 °C",rho:1000,mu:25},
+ {id:"olje",n:"Rapsolje 20 °C",rho:915,mu:70},
+ {id:"gly",n:"Glyserol 20 °C",rho:1260,mu:1410},
+ {id:"egen",n:"Egendefinert væske",rho:1000,mu:1}
+];
+const PUMPS=[
+ {id:"A",n:"Sentrifugalpumpe A – liten",type:"c",H0:22,Qmax:8,Qbep:5,eta:0.55},
+ {id:"B",n:"Sentrifugalpumpe B – middels",type:"c",H0:34,Qmax:18,Qbep:11,eta:0.65},
+ {id:"C",n:"Sentrifugalpumpe C – stor",type:"c",H0:48,Qmax:40,Qbep:25,eta:0.72},
+ {id:"L",n:"Lobepumpe (fortrengning)",type:"pd",Qnom:6,slip:0.012,Hmax:60,eta:0.6}
+];
+const $=id=>document.getElementById(id);
+const nf=(x,d)=>{if(!isFinite(x))return"–";return x.toLocaleString("nb-NO",{minimumFractionDigits:d,maximumFractionDigits:d});};
+const nfs=x=>{ // signifikante siffer
+  if(!isFinite(x))return"–"; const a=Math.abs(x);
+  if(a>=1000)return nf(Math.round(x/10)*10,0); if(a>=100)return nf(x,0); if(a>=10)return nf(x,1); if(a>=1)return nf(x,2); return nf(x,3);};
+
+// ---------- Fysikk (samme som regnearket) ----------
+const wall=D=>D>100?2:D>60?1.6:D>24?1.2:D>5?1:0;
+const dIn=D=>D-2*wall(D);                    // mm
+const area=D=>Math.PI*0.25*dIn(D)**2;         // mm²
+const velOf=(Q,D)=>Q/(3.6*area(D));           // l/h -> m/s
+const flowOf=(v,D)=>area(D)*v*3.6;            // m/s -> l/h
+const reOf=(v,D,f)=>f.rho*v*(dIn(D)/1000)/(f.mu/1000);
+function fric(Re,dmm){
+  if(Re<=0)return 0;
+  const lam=r=>64/r;
+  const turb=r=>0.25/Math.log10(EPS/(3.7*dmm)+5.74/Math.pow(r,0.9))**2;
+  if(Re<2300)return lam(Re);
+  if(Re>4000)return turb(Re);
+  const t=(Re-2300)/1700; return lam(2300)*(1-t)+turb(4000)*t;
+}
+const regimeOf=Re=>Re<2300?"lam":Re<=4000?"tr":"turb";
+const REGNAME={lam:"Laminær",tr:"Overgang",turb:"Turbulent"};
+const REGCLS={lam:"c-ok",tr:"c-warn",turb:"c-info"};
+function velStatus(v){
+  if(v<0.5)return["c-warn","Lav hastighet: fare for avleiringer og dårlig varmeoverføring"];
+  if(v<1.5)return["c-info","Moderat: greit for produkt, for lavt for CIP (minst 1,5 m/s)"];
+  if(v<=3)return["c-ok","Anbefalt område for meierirør og CIP"];
+  if(v<=5)return["c-warn","Høy: stort trykktap og mekanisk påkjenning av melkefettet"];
+  return["c-bad","Svært høy: røret er for lite for denne flowen"];
+}
+
+// ---------- Tilstand ----------
+const S={D:38,mode:"flow",Q:4750,v:1.5,fluid:"m4",rho:1000,mu:1,pump:"B",k:"1",n:1.0};
+function fluid(){const f=FLUIDS.find(x=>x.id===S.fluid);return f.id==="egen"?{...f,rho:S.rho,mu:Math.max(0.01,S.mu)}:f;}
+function curQ(){return S.mode==="flow"?S.Q:flowOf(S.v,S.D);}
+
+// ---------- Kontroller ----------
+const dimSel=$("dim");
+DIMS.forEach(D=>{const o=document.createElement("option");o.value=D;o.textContent=`${nf(D,D%1?1:0)} mm  (indre ${nf(dIn(D),1)} mm)`;dimSel.appendChild(o);});
+const flSel=$("fluid");
+FLUIDS.forEach(f=>{const o=document.createElement("option");o.value=f.id;o.textContent=f.n;flSel.appendChild(o);});
+const pSel=$("pump");
+PUMPS.forEach(p=>{const o=document.createElement("option");o.value=p.id;o.textContent=p.n;pSel.appendChild(o);});
+
+const QMIN=10,QMAX=80000,VMIN=0.02,VMAX=12;
+const toLog=(x,a,b)=>Math.round(1000*Math.log(x/a)/Math.log(b/a));
+const fromLog=(s,a,b)=>a*Math.pow(b/a,s/1000);
+function syncInputs(){
+  dimSel.value=S.D; flSel.value=S.fluid; pSel.value=S.pump;
+  const setV=(id,val)=>{const el=$(id);if(document.activeElement!==el)el.value=val;};
+  setV("flow",Math.round(S.Q)); setV("flowR",toLog(Math.max(QMIN,S.Q),QMIN,QMAX));
+  setV("vel",+S.v.toFixed(2)); setV("velR",toLog(Math.max(VMIN,S.v),VMIN,VMAX));
+  $("fFlow").hidden=S.mode!=="flow"; $("fVel").hidden=S.mode!=="vel";
+  $("mFlow").setAttribute("aria-pressed",S.mode==="flow"); $("mVel").setAttribute("aria-pressed",S.mode==="vel");
+  $("custom").hidden=S.fluid!=="egen";
+  const isPD=PUMPS.find(p=>p.id===S.pump).type==="pd";
+  document.querySelectorAll("[data-k]").forEach(b=>{b.setAttribute("aria-pressed",b.dataset.k===S.k);b.disabled=isPD&&b.dataset.k!=="1";});
+  $("n").value=Math.round(S.n*100); $("nv").textContent=Math.round(S.n*100)+" %";
+}
+dimSel.onchange=()=>{S.D=+dimSel.value;update();};
+flSel.onchange=()=>{S.fluid=flSel.value;update();};
+$("rho").oninput=e=>{S.rho=+e.target.value||1000;update();};
+$("mu").oninput=e=>{S.mu=+e.target.value||1;update();};
+$("mFlow").onclick=()=>{S.Q=curQ();S.mode="flow";update();};
+$("mVel").onclick=()=>{S.v=velOf(curQ(),S.D);S.mode="vel";update();};
+$("flow").oninput=e=>{const x=+e.target.value;if(x>0){S.Q=x;update(true);}};
+$("flowR").oninput=e=>{S.Q=Math.round(fromLog(+e.target.value,QMIN,QMAX));update();};
+$("vel").oninput=e=>{const x=+e.target.value;if(x>0){S.v=x;update(true);}};
+$("velR").oninput=e=>{S.v=fromLog(+e.target.value,VMIN,VMAX);update();};
+pSel.onchange=()=>{S.pump=pSel.value;if(PUMPS.find(p=>p.id===S.pump).type==="pd")S.k="1";update();};
+document.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{S.k=b.dataset.k;update();});
+$("n").oninput=e=>{S.n=+e.target.value/100;update();};
+["hs","pb","L","nb","nvv"].forEach(id=>$(id).oninput=()=>update());
+$("useOp").onclick=()=>{if(lastOp&&lastOp.Q>0){S.mode="flow";S.Q=Math.round(lastOp.Q*1000);update();document.getElementById("ror").scrollIntoView({behavior:"smooth",block:"start"});}};
+
+// ---------- Del 1: utlesing ----------
+let SIM={v:0,Re:0,D:38};
+function renderPart1(){
+  const f=fluid(),Q=curQ(),D=S.D,v=velOf(Q,D),Re=reOf(v,D,f),rg=regimeOf(Re),d=dIn(D);
+  SIM={v,Re,D};
+  $("read1").innerHTML=[
+    ["Veggtykkelse t",nf(wall(D),1),"mm"],["Indre diameter d",nf(d,1),"mm"],
+    [S.mode==="flow"?"Væskehastighet v":"Beregnet flow Q",S.mode==="flow"?nf(v,2):nf(Q,0),S.mode==="flow"?"m/s":"l/h"],
+    ["Flow",nf(Q/3600,3),"l/s"],["Liter væske per meter rør",nf(area(D)/1000,3),"l/m"],
+    ["Reynolds-tall Re",nf(Math.round(Re),0),""]
+  ].map(([a,b,c])=>`<div><span>${a}</span><b>${b}<small>${c}</small></b></div>`).join("");
+  const [vc,vt]=velStatus(v);
+  $("status1").innerHTML=`<span class="chip ${REGCLS[rg]}">${REGNAME[rg]} strømning</span><span class="chip ${vc}">${nf(v,2)} m/s</span><span>${vt}</span>`;
+  const pos=Re<=0?0:Re<2300?36*Re/2300:Re<4000?36+14*(Re-2300)/1700:Math.min(100,50+50*Math.log10(Re/4000)/Math.log10(100000/4000));
+  $("remk").style.left=pos+"%";
+  ["lam","tr","turb"].forEach(k=>$("rg-"+k).classList.toggle("on",k===rg));
+  const dm=d/1000;
+  $("formula1").innerHTML=
+   (S.mode==="flow"
+    ?`<div>v = Q / (3,6 · π/4 · d²) = ${nf(Q,0)} / (3,6 · 0,7854 · ${nf(d,1)}²) = <b>${nf(v,2)} m/s</b></div>`
+    :`<div>Q = π/4 · d² · v · 3,6 = 0,7854 · ${nf(d,1)}² · ${nf(S.v,2)} · 3,6 = <b>${nf(Q,0)} l/h</b></div>`)+
+   `<div>Re = ρ · v · d / μ = ${nf(f.rho,0)} · ${nf(v,2)} · ${nf(dm,4)} / ${nf(f.mu/1000,5)} = <b>${nf(Math.round(Re),0)}</b></div>`+
+   `<div><em>d i meter, μ i Pa·s (1 mPa·s = 0,001 Pa·s)</em></div>`;
+  $("fluidhint").textContent=`ρ = ${nf(f.rho,0)} kg/m³, μ = ${nfs(f.mu)} mPa·s. Høyere viskositet gir lavere Reynolds-tall.`;
+}
+
+// ---------- Del 2: pumpe og anlegg ----------
+function sysParts(Qm3h){ // returnerer komponenter i meter
+  const f=fluid(),D=S.D,dm=dIn(D)/1000;
+  const v=velOf(Qm3h*1000,D),Re=reOf(v,D,f),fr=fric(Re,dIn(D));
+  const hv=v*v/(2*g);
+  const K=0.5+1.0+0.3*(+$("nb").value||0)+2.0*(+$("nvv").value||0);
+  return{stat:+$("hs").value||0, press:(+$("pb").value||0)*1e5/(f.rho*g), pipe:fr*((+$("L").value||0)/dm)*hv, minor:K*hv, v, Re, fr, K};
+}
+const Hsys=Q=>{const p=sysParts(Q);return p.stat+p.press+p.pipe+p.minor;};
+function pumpDef(){return PUMPS.find(p=>p.id===S.pump);}
+// sentrifugal: én pumpe H(Q) = H0 (n² − (Q/Qmax)²)
+function Hp1(p,Q){return p.H0*(S.n*S.n-(Q/p.Qmax)**2);}
+function Hpump(Q){const p=pumpDef();
+  if(S.k==="s")return 2*Hp1(p,Q);
+  if(S.k==="p")return Hp1(p,Q/2);
+  return Hp1(p,Q);}
+function QlimC(){const p=pumpDef();return p.Qmax*S.n*(S.k==="p"?2:1);}
+function etaC(Q){const p=pumpDef(),qe=S.k==="p"?Q/2:Q,qb=p.Qbep*S.n;return Math.max(0.05,p.eta*(1-((qe-qb)/qb)**2));}
+function solve(){
+  const p=pumpDef();
+  if(p.type==="pd"){
+    const Qn=p.Qnom*S.n;
+    // finn H der Hsys(Qn - slip·H) = H
+    let lo=0,hi=p.Hmax,fn=H=>Hsys(Math.max(0,Qn-p.slip*H))-H;
+    if(fn(hi)>0){const Q=Math.max(0,Qn-p.slip*p.Hmax);return{Q,H:p.Hmax,relief:true,eta:p.eta};}
+    for(let i=0;i<60;i++){const m=(lo+hi)/2;fn(m)>0?lo=m:hi=m;}
+    const H=(lo+hi)/2;return{Q:Math.max(0,Qn-p.slip*H),H,eta:p.eta};
+  }
+  const ql=QlimC(),fn=Q=>Hpump(Q)-Hsys(Q);
+  if(fn(0)<=0)return{Q:0,H:Hpump(0),none:true,eta:0};
+  let lo=0,hi=ql;for(let i=0;i<60;i++){const m=(lo+hi)/2;fn(m)>0?lo=m:hi=m;}
+  const Q=(lo+hi)/2;return{Q,H:Hpump(Q),eta:etaC(Q)};
+}
+let lastOp=null, chartGeo=null;
+function niceMax(x){if(x<=0)return 1;const e=Math.pow(10,Math.floor(Math.log10(x)));const m=x/e;const n=m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10;return n*e;}
+function ticks(max){const step=max/5;return Array.from({length:6},(_,i)=>i*step);}
+
+function renderPart2(){
+  const p=pumpDef(),op=solve();lastOp=op;
+  const f=fluid(),Qdes=curQ()/1000;
+  // akser
+  let qTop=p.type==="pd"?p.Qnom*S.n*1.7:QlimC()*1.05;
+  qTop=Math.max(qTop,Qdes*1.25,op.Q*1.25,1);
+  const Q_AX=niceMax(qTop);
+  let hTop=p.type==="pd"?p.Hmax*1.1:Hpump(0)*1.12;
+  hTop=Math.max(hTop,Hsys(0)*1.3,op.H*1.15,5);
+  const H_AX=niceMax(hTop);
+  const box=$("chartbox"),W=Math.max(320,box.clientWidth),Hh=Math.round(Math.min(380,Math.max(260,W*0.5)));
+  const m={l:52,r:18,t:16,b:44},pw=W-m.l-m.r,ph=Hh-m.t-m.b;
+  const X=q=>m.l+pw*q/Q_AX,Y=h=>m.t+ph*(1-h/H_AX);
+  chartGeo={X,Y,m,pw,ph,Q_AX,H_AX,W,Hh};
+  const svg=$("chart");svg.setAttribute("viewBox",`0 0 ${W} ${Hh}`);
+  let s=`<defs><clipPath id="pl"><rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}"/></clipPath></defs>`;
+  ticks(H_AX).forEach(h=>{s+=`<line x1="${m.l}" x2="${m.l+pw}" y1="${Y(h)}" y2="${Y(h)}" stroke="var(--line)" stroke-width="1"/><text x="${m.l-8}" y="${Y(h)+4}" text-anchor="end" font-size="11" font-family="var(--mono)" fill="var(--muted)">${nfs(h)}</text>`;});
+  ticks(Q_AX).forEach(q=>{s+=`<text x="${X(q)}" y="${m.t+ph+18}" text-anchor="middle" font-size="11" font-family="var(--mono)" fill="var(--muted)">${nfs(q)}</text>`;});
+  s+=`<line x1="${m.l}" x2="${m.l+pw}" y1="${m.t+ph}" y2="${m.t+ph}" stroke="var(--muted)" stroke-width="1"/>`;
+  s+=`<text x="${m.l+pw/2}" y="${Hh-6}" text-anchor="middle" font-size="12" fill="var(--muted)">Flow Q, m³/h</text>`;
+  s+=`<text transform="translate(13 ${m.t+ph/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="var(--muted)">Løftehøyde H, m</text>`;
+  // anleggskurve
+  let ds="";for(let i=0;i<=120;i++){const q=Q_AX*i/120;ds+=(i?"L":"M")+X(q).toFixed(1)+" "+Y(Math.min(Hsys(q),H_AX*2)).toFixed(1);}
+  s+=`<g clip-path="url(#pl)"><path d="${ds}" fill="none" stroke="var(--sys)" stroke-width="2.2"/>`;
+  // pumpekurve
+  let dp="";
+  if(p.type==="pd"){const Qn=p.Qnom*S.n;dp=`M${X(Qn)} ${Y(0)}L${X(Math.max(0,Qn-p.slip*p.Hmax))} ${Y(p.Hmax)}`;
+    s+=`<line x1="${m.l}" x2="${m.l+pw}" y1="${Y(p.Hmax)}" y2="${Y(p.Hmax)}" stroke="var(--bad)" stroke-dasharray="2 4" stroke-width="1.2"/>`;}
+  else{const ql=QlimC();for(let i=0;i<=120;i++){const q=ql*i/120;dp+=(i?"L":"M")+X(q).toFixed(1)+" "+Y(Math.max(0,Hpump(q))).toFixed(1);}}
+  s+=`<path d="${dp}" fill="none" stroke="var(--accent)" stroke-width="2.6"/>`;
+  // ønsket flow
+  if(Qdes<=Q_AX)s+=`<line x1="${X(Qdes)}" x2="${X(Qdes)}" y1="${m.t}" y2="${m.t+ph}" stroke="var(--ink)" stroke-dasharray="5 4" stroke-width="1" opacity=".6"/>`;
+  s+=`</g>`;
+  if(Qdes<=Q_AX){const right=X(Qdes)>m.l+pw-110;s+=`<text x="${X(Qdes)+(right?-6:6)}" y="${m.t+13}" text-anchor="${right?"end":"start"}" font-size="11" fill="var(--muted)">Ønsket ${nfs(Qdes)} m³/h</text>`;}
+  if(p.type==="pd")s+=`<text x="${m.l+pw-4}" y="${Y(p.Hmax)-6}" text-anchor="end" font-size="11" fill="var(--bad)">Sikkerhetsventil åpner (${p.Hmax} m)</text>`;
+  // direkte etiketter
+  if(p.type!=="pd"){const lq=QlimC()*0.12;s+=`<text x="${X(lq)+4}" y="${Y(Hpump(lq))-8}" font-size="12" font-weight="600" fill="var(--ink)">Pumpe</text>`;}
+  const sq=Q_AX*0.86,shv=Hsys(sq);if(shv<H_AX*0.95)s+=`<text x="${X(sq)}" y="${Y(shv)+18}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">Anlegg</text>`;
+  // driftspunkt
+  if(!op.none){s+=`<circle cx="${X(op.Q)}" cy="${Y(op.H)}" r="6.5" fill="var(--ink)" stroke="var(--panel)" stroke-width="2"/>`;
+    const lx=X(op.Q),left=lx>m.l+pw*0.65;
+    s+=`<text x="${lx+(left?-12:12)}" y="${Y(op.H)-10}" text-anchor="${left?"end":"start"}" font-size="12" font-family="var(--mono)" fill="var(--ink)">${nfs(op.Q)} m³/h · ${nfs(op.H)} m</text>`;}
+  s+=`<line id="xh" x1="0" x2="0" y1="${m.t}" y2="${m.t+ph}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>`;
+  s+=`<rect id="hit" x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" fill="transparent"/>`;
+  svg.innerHTML=s;
+  svg.style.height=Hh+"px";
+  bindHover();
+
+  // utlesing
+  const parts=sysParts(op.Q),Qs=op.Q/3600,P=op.eta>0?f.rho*g*Qs*op.H/op.eta/1000:0;
+  const bar=op.H*f.rho*g/1e5;
+  $("read2").innerHTML=[
+    ["Driftspunkt, flow",nfs(op.Q),"m³/h"],["Flow",nf(op.Q*1000,0),"l/h"],
+    ["Løftehøyde H",nfs(op.H),"m"],["Tilsvarer trykk",nf(bar,2),"bar"],
+    ["Hastighet i røret",nf(parts.v,2),"m/s"],["Reynolds-tall",nf(Math.round(parts.Re),0),REGNAME[regimeOf(parts.Re)].toLowerCase()],
+    ["Virkningsgrad η",op.eta>0?nf(op.eta*100,0):"–","%"],["Akseleffekt",nf(P,2),"kW"]
+  ].map(([a,b,c])=>`<div><span>${a}</span><b>${b}<small>${c}</small></b></div>`).join("");
+  let w="";
+  if(op.none)w=`<div class="warnbox c-bad">Pumpen klarer ikke løftehøyden ved null flow (${nfs(Hpump(0))} m mot ${nfs(Hsys(0))} m). Øk turtallet, koble pumper i serie eller velg en større pumpe.</div>`;
+  else if(op.relief)w=`<div class="warnbox c-bad">Trykket blir høyere enn lobepumpen tåler. Sikkerhetsventilen åpner og sirkulerer væsken tilbake. Fortrengningspumper skal aldri kjøres mot stengt ventil.</div>`;
+  else if(p.type==="pd")w=`<div class="warnbox c-info">Lobepumpen gir nesten samme flow uansett løftehøyde. Flowen styres med turtallet, ikke med strupeventil.</div>`;
+  else{const dev=(op.Q-Qdes)/Math.max(Qdes,1e-6);
+    if(Math.abs(dev)<0.05)w=`<div class="warnbox c-ok">Driftspunktet treffer ønsket flow (innen 5 %).</div>`;
+    else w=`<div class="warnbox c-info">Pumpen gir ${nfs(op.Q)} m³/h, ${dev>0?"mer":"mindre"} enn ønsket ${nfs(Qdes)} m³/h. ${dev>0?"Senk turtallet eller strup med en ventil":"Øk turtallet eller velg en kraftigere pumpe"}.</div>`;}
+  if(!op.none&&parts.v>3)w+=`<div class="warnbox c-warn" style="margin-top:6px">Hastigheten i røret er ${nf(parts.v,1)} m/s. Vurder et større rør.</div>`;
+  $("warn2").innerHTML=w;
+  const items=[["Statisk løftehøyde",parts.stat],["Mottrykk / utstyr",parts.press],["Friksjon i røret",parts.pipe],["Bend, ventiler, inn/ut",parts.minor]];
+  const tot=Math.max(0.001,items.reduce((a,b)=>a+Math.max(0,b[1]),0));
+  $("bars").innerHTML=items.map(([a,b])=>`<div class="bar"><span>${a}</span><span class="t"><i style="width:${100*Math.max(0,b)/tot}%"></i></span><b>${nfs(b)} m</b></div>`).join("");
+  $("useOp").disabled=op.none;
+  $("formula2").innerHTML=
+   `<div>H<sub>anlegg</sub> = H<sub>statisk</sub> + p/(ρ·g) + (λ · L/d + ΣK) · v²/(2g)</div>`+
+   `<div>= ${nfs(parts.stat)} + ${nfs(parts.press)} + (${nf(parts.fr,4)} · ${nfs(+$("L").value)}/${nf(dIn(S.D)/1000,4)} + ${nf(parts.K,1)}) · ${nf(parts.v,2)}²/19,62 = <b>${nfs(parts.stat+parts.press+parts.pipe+parts.minor)} m</b></div>`+
+   `<div><em>λ = 64/Re når laminær, Swamee–Jain når turbulent. Effekt P = ρ·g·Q·H/η</em></div>`;
+}
+function bindHover(){
+  const hit=$("hit"),tip=$("tip"),xh=$("xh");
+  const move=e=>{const r=$("chart").getBoundingClientRect(),G=chartGeo,sc=G.W/r.width;
+    const px=(e.clientX-r.left)*sc,q=Math.max(0,Math.min(G.Q_AX,(px-G.m.l)/G.pw*G.Q_AX));
+    xh.setAttribute("x1",G.X(q));xh.setAttribute("x2",G.X(q));xh.setAttribute("visibility","visible");
+    const p=pumpDef();let t=`Q ${nfs(q)} m³/h<br>Anlegg ${nfs(Hsys(q))} m`;
+    if(p.type!=="pd"&&q<=QlimC())t+=`<br>Pumpe ${nfs(Hpump(q))} m`;
+    t+=`<br>v ${nf(velOf(q*1000,S.D),2)} m/s`;
+    tip.innerHTML=t;tip.hidden=false;
+    const bx=G.X(q)/sc;tip.style.left=(bx>r.width*0.6?bx-tip.offsetWidth-12:bx+12)+"px";tip.style.top=(G.m.t/sc+6)+"px";};
+  hit.addEventListener("pointermove",move);hit.addEventListener("pointerdown",move);
+  hit.addEventListener("pointerleave",()=>{tip.hidden=true;xh.setAttribute("visibility","hidden");});
+}
+
+// ---------- Del 3: tabell ----------
+function renderTable(){
+  const f=fluid(),Q=curQ();
+  $("tbody").innerHTML=DIMS.map(D=>{const v=velOf(Q,D),Re=reOf(v,D,f),rg=regimeOf(Re),[vc]=velStatus(v);
+    return`<tr data-d="${D}" tabindex="0" class="${D===S.D?"sel":""}"><td>${nf(D,D%1?1:0)} mm</td><td>${nf(wall(D),1)}</td><td>${nf(dIn(D),1)}</td><td>${nf(area(D)/1000,3)}</td><td><span class="chip ${vc}">${nf(v,2)} m/s</span></td><td>${nf(Math.round(Re),0)}</td><td>${REGNAME[rg]}</td></tr>`;}).join("");
+  $("tbody").querySelectorAll("tr").forEach(tr=>{const pick=()=>{S.D=+tr.dataset.d;if(S.mode==="vel")S.v=velOf(Q,S.D);update();};tr.onclick=pick;tr.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}};});
+  $("tabnote").textContent=`Flow ${nf(Q,0)} l/h (${nf(Q/3600,3)} l/s), ${f.n.toLowerCase()}. Fargen på hastigheten viser om den ligger i anbefalt område 1,5–3 m/s.`;
+}
+
+function update(fromTyping){
+  syncInputs();
+  renderPart1();renderPart2();renderTable();
+}
+
+// ---------- Animasjon (Reynolds' fargestrek-forsøk) ----------
+const cv=$("pipe"),ctx=cv.getContext("2d");
+let CW=0,CH=0,dpr=1,col={};
+function readCols(){const cs=getComputedStyle(document.documentElement);["--accent","--sys","--muted","--steel1","--steel2","--panel","--soft","--ink"].forEach(k=>col[k]=cs.getPropertyValue(k).trim());}
+function resize(){dpr=Math.min(2,window.devicePixelRatio||1);CW=cv.clientWidth;CH=cv.clientHeight;cv.width=CW*dpr;cv.height=CH*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
+new ResizeObserver(()=>{resize();if(chartGeo&&Math.abs($("chartbox").clientWidth-chartGeo.W)>4&&$("chartbox").clientWidth>320)renderPart2();}).observe(cv);
+const TR=[],DYE=[];
+for(let i=0;i<150;i++)TR.push({x:Math.random(),y:Math.random()*2-1});
+function randn(){return Math.sqrt(-2*Math.log(Math.random()+1e-9))*Math.cos(2*Math.PI*Math.random());}
+let turbI=0,tPrev=performance.now(),time=0,burst=0,emitAcc=0,colT=0;
+const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function geom(){const dmm=dIn(SIM.D);const ph=Math.round(44+ (Math.sqrt(dmm)-2)/(Math.sqrt(97.6)-2)*120);const h=Math.min(CH-40,ph);return{x0:14,x1:CW-14,yc:CH/2,h};}
+function targetTurb(Re){if(Re<2300)return 0;if(Re>4000)return Math.min(1,0.75+0.25*Math.log10(Re/4000));return 0.15+0.45*(Re-2300)/1700;}
+function uProf(y,t){const a=Math.abs(y);return(1-t)*2*(1-y*y)+t*1.2*Math.pow(Math.max(0,1-a),1/7);}
+function step(dt){
+  const Re=SIM.Re,v=SIM.v,G=geom(),L=G.x1-G.x0;
+  let tgt=targetTurb(Re);
+  if(Re>=2300&&Re<=4000){ // intermitterende støt i overgangsområdet
+    if(Math.random()<dt*0.8)burst=1; burst=Math.max(0,burst-dt*0.9); tgt=tgt*0.5+burst*0.6;}
+  turbI+= (tgt-turbI)*Math.min(1,dt*3);
+  const S0=Math.max(6,Math.min(420,70*Math.pow(Math.max(v,0.001),0.6))); // px/s middelhastighet
+  time+=dt;
+  const t=turbI,sig=t*2.2;
+  const adv=p=>{const u=uProf(p.y,t)*S0;p.x+=(u+(t*S0*0.25*randn()))*dt/L;
+    p.y+=sig*randn()*Math.sqrt(dt)*0.35+t*1.4*Math.sin(p.x*18+time*4+p.y*3)*dt;
+    if(p.y>0.97)p.y=1.94-p.y; if(p.y<-0.97)p.y=-1.94-p.y; p.y=Math.max(-0.97,Math.min(0.97,p.y));};
+  TR.forEach(p=>{adv(p);if(p.x>1){p.x-=1;p.y=Math.random()*2-1;}});
+  emitAcc+=dt*uProf(0,t)*S0/2.2;
+  while(emitAcc>1&&DYE.length<2200){emitAcc-=1;DYE.push({x:0.03,y:(Math.random()-.5)*0.02});}
+  if(emitAcc>1)emitAcc=0;
+  for(let i=DYE.length-1;i>=0;i--){const p=DYE[i];adv(p);if(p.x>1)DYE.splice(i,1);}
+}
+function draw(){
+  const G=geom(),t=turbI,L=G.x1-G.x0,top=G.yc-G.h/2,bot=G.yc+G.h/2;
+  ctx.clearRect(0,0,CW,CH);
+  // rørvegg
+  const wallpx=Math.max(4,G.h*0.08);
+  ctx.fillStyle=col["--steel1"];ctx.fillRect(G.x0,top-wallpx,L,wallpx);ctx.fillRect(G.x0,bot,L,wallpx);
+  ctx.fillStyle=col["--panel"];ctx.fillRect(G.x0,top,L,G.h);
+  // injeksjonsnål
+  ctx.strokeStyle=col["--muted"];ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(G.x0+L*0.03-14,G.yc);ctx.lineTo(G.x0+L*0.03,G.yc);ctx.stroke();
+  // partikler
+  ctx.strokeStyle=col["--muted"];ctx.globalAlpha=0.45;ctx.lineWidth=1.4;
+  const S0=Math.max(6,Math.min(420,70*Math.pow(Math.max(SIM.v,0.001),0.6)));
+  TR.forEach(p=>{const x=G.x0+p.x*L,y=G.yc+p.y*G.h/2,len=Math.max(1.5,uProf(p.y,t)*S0*0.05);ctx.beginPath();ctx.moveTo(x-len,y);ctx.lineTo(x,y);ctx.stroke();});
+  // farge
+  ctx.globalAlpha=Math.max(0.25,0.85-t*0.45);ctx.fillStyle=col["--accent"];
+  const r=1.6+t*1.2;
+  DYE.forEach(p=>{ctx.beginPath();ctx.arc(G.x0+p.x*L,G.yc+p.y*G.h/2,r,0,Math.PI*2);ctx.fill();});
+  ctx.globalAlpha=1;
+  // hastighetsprofil
+  const px=G.x0+L*0.80,amp=Math.min(L*0.15,90);
+  ctx.strokeStyle=col["--sys"];ctx.fillStyle=col["--sys"];ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(px,top);ctx.lineTo(px,bot);ctx.stroke();
+  ctx.beginPath();for(let i=0;i<=40;i++){const y=-1+2*i/40;const xx=px+uProf(y,t)/2*amp,yy=G.yc+y*G.h/2;i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);}ctx.stroke();
+  ctx.lineWidth=1.3;
+  for(let i=1;i<8;i++){const y=-1+2*i/8,xx=px+uProf(y,t)/2*amp,yy=G.yc+y*G.h/2;
+    ctx.beginPath();ctx.moveTo(px,yy);ctx.lineTo(xx-4,yy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(xx,yy);ctx.lineTo(xx-5,yy-3);ctx.lineTo(xx-5,yy+3);ctx.closePath();ctx.fill();}
+  // tekst
+  ctx.fillStyle=col["--ink"];ctx.font="500 12px "+getComputedStyle(document.body).fontFamily;
+  ctx.fillText(`Re ${Math.round(SIM.Re).toLocaleString("nb-NO")}  ·  ${REGNAME[regimeOf(SIM.Re)]}`,G.x0+4,Math.max(14,top-wallpx-8));
+  ctx.textAlign="right";ctx.fillText(`v = ${SIM.v.toLocaleString("nb-NO",{maximumFractionDigits:2})} m/s`,G.x1-4,Math.min(CH-6,bot+wallpx+16));ctx.textAlign="left";
+}
+function loop(now){
+  const dt=Math.min(0.05,(now-tPrev)/1000);tPrev=now;
+  colT-=dt;if(colT<=0){readCols();colT=0.5;}
+  if(!reduce)step(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ---------- Start ----------
+resize();readCols();update();
+if(reduce){for(let i=0;i<400;i++)step(1/30);}
+else{for(let i=0;i<200;i++)step(1/30);}
+requestAnimationFrame(loop);
+if(reduce){ // forhåndsberegn ny tilstand når innstillinger endres
+  document.addEventListener("input",()=>{DYE.length=0;for(let i=0;i<400;i++)step(1/30);});
+  document.addEventListener("change",()=>{DYE.length=0;for(let i=0;i<400;i++)step(1/30);});
+}
+})();
+</script>
+<script>
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./sw.js").catch(()=>{});});}
+</script>
+</body>
+</html>

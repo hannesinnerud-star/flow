@@ -1,0 +1,38 @@
+RØRSTRØM OG PUMPER – installerbar web-app (PWA)
+================================================
+
+Innhold i mappen
+  index.html             selve simuleringen
+  manifest.webmanifest   navn, ikon og farger for installasjon
+  sw.js                  service worker – gjør at appen virker uten nett
+  icons/                 app-ikoner
+
+VIKTIG: En PWA må ligge på en nettadresse med https. Den kan ikke
+installeres ved å dobbeltklikke index.html på egen PC.
+
+Slik legger du den ut (gratis), f.eks. med GitHub Pages
+  1. Lag en konto på github.com og et nytt, offentlig repository,
+     f.eks. "rorstrom".
+  2. Velg "Add file" > "Upload files" og last opp ALT innholdet i
+     denne mappen (index.html, manifest.webmanifest, sw.js og
+     mappen icons). Trykk "Commit changes".
+  3. Gå til Settings > Pages. Under "Branch" velger du "main" og
+     "/ (root)", og trykker Save.
+  4. Etter et par minutter ligger appen på
+     https://<brukernavn>.github.io/rorstrom/
+
+Andre steder som fungerer: Netlify Drop (dra mappen inn på
+app.netlify.com/drop), skolens egen webserver eller et
+SharePoint-/Teams-område som kan vise statiske nettsider.
+
+Slik installerer elevene appen
+  Android / Chrome:  åpne adressen > menyen (⋮) > "Installer app"
+                     eller "Legg til på startskjermen".
+  iPhone / iPad:     åpne i Safari > Del-knappen > "Legg til på Hjem-skjerm".
+  PC (Chrome/Edge):  installer-ikonet i adresselinjen.
+
+Etter første åpning virker appen også uten nett.
+
+Oppdatere appen
+  Bytt ut filene, og endre VERSION i sw.js (f.eks. "rorstrom-v2"),
+  så får elevene den nye versjonen neste gang de åpner appen med nett.
